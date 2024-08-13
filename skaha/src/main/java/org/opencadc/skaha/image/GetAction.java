@@ -70,9 +70,7 @@ package org.opencadc.skaha.image;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -87,10 +85,9 @@ import org.opencadc.skaha.SkahaAction;
 
 /**
  * @author majorb
- *
  */
 public class GetAction extends SkahaAction {
-    
+
     private static final Logger log = Logger.getLogger(GetAction.class);
     private static final int MAX_PROJECT_NTHREADS = 20;
     private static final int MAX_REPO_NTHREADS = 40;
@@ -102,22 +99,27 @@ public class GetAction extends SkahaAction {
     @Override
     public void doAction() throws Exception {
         super.initRequest();
-        
+
         String type = syncInput.getParameter("type");
         if (type != null && !SESSION_TYPES.contains(type)) {
             throw new IllegalArgumentException("unknown type: " + type);
         }
-        
+
         String idToken = super.getIdToken();
         List<Image> images = getImages(idToken, type);
         Gson gson = new GsonBuilder().disableHtmlEscaping().setPrettyPrinting().create();
         String json = gson.toJson(images);
-        
+
         syncOutput.setHeader("Content-Type", "application/json");
         syncOutput.getOutputStream().write(json.getBytes());
     }
-        
+
     protected List<Image> getImages(String idToken, String typeFilter) throws Exception {
+        String lastUpdated = redis.get("lastUpdated");
+        if (isImageListUpdated(lastUpdated)) {
+            return redis.get("public", ImageList.class).get();
+        }
+
         List<Callable<List<Image>>> tasks = new ArrayList<Callable<List<Image>>>();
         for (String harborHost : super.harborHosts) {
             // get projects from each Harbor host
@@ -125,7 +127,7 @@ public class GetAction extends SkahaAction {
             String projects = callHarbor(idToken, harborHost, null, null);
             JSONTokener tokener = new JSONTokener(projects);
             JSONArray jProjects = new JSONArray(tokener);
-            for (int p=0; p<jProjects.length(); p++) {
+            for (int p = 0; p < jProjects.length(); p++) {
                 // get images for each project
                 JSONObject jProject = jProjects.getJSONObject(p);
                 int repoCount = jProject.getInt("repo_count");
@@ -159,22 +161,28 @@ public class GetAction extends SkahaAction {
                 if (f.isDone()) {
                     if (!imageList.isEmpty()) {
                         // collect the images from each project
-                       images.addAll(imageList);
+                        images.addAll(imageList);
                     }
                 }
             }
         } catch (InterruptedException | ExecutionException e) {
             log.error("Error when executing thread in ThreadPool: " + e.getMessage() + " caused by: " + e.getCause().toString());
-            throw e; 
+            throw e;
         } finally {
             if (taskExecutor != null) {
                 taskExecutor.shutdown();
             }
         }
-        
+
+        redis.put("lastUpdated", String.valueOf(System.currentTimeMillis()));
+        redis.put("public", new ImageList(images));
         return images;
     }
-    
+
+    private boolean isImageListUpdated(String lastUpdated) {
+        return lastUpdated != null && (Long.parseLong(lastUpdated) + imageRefreshInterval) > System.currentTimeMillis();
+    }
+
     protected List<Image> getProjectImages(String idToken, String harborHost, JSONObject jProject, String typeFilter) throws Exception {
         List<Callable<List<Image>>> tasks = new ArrayList<Callable<List<Image>>>();
         String pName = jProject.getString("name");
@@ -182,7 +190,7 @@ public class GetAction extends SkahaAction {
         // get the repositories in the project
         String repos = callHarbor(idToken, harborHost, pName, null);
         JSONArray jRepos = new JSONArray(repos);
-        for (int r=0; r<jRepos.length(); r++) {
+        for (int r = 0; r < jRepos.length(); r++) {
             // for each repository
             JSONObject jRepo = jRepos.getJSONObject(r);
             int artifactCount = jRepo.getInt("artifact_count");
@@ -221,16 +229,16 @@ public class GetAction extends SkahaAction {
             }
         } catch (InterruptedException | ExecutionException e) {
             log.error("Error when executing thread in ThreadPool: " + e.getMessage() + " caused by: " + e.getCause().toString());
-            throw e; 
+            throw e;
         } finally {
             if (taskExecutor != null) {
                 taskExecutor.shutdown();
             }
         }
-        
+
         return images;
     }
-    
+
     protected List<Image> getRepoImages(String idToken, String harborHost, String pName, JSONObject jRepo, String typeFilter) throws Exception {
         List<Image> images = new ArrayList<Image>();
         String rName = jRepo.getString("name");
@@ -239,7 +247,7 @@ public class GetAction extends SkahaAction {
         log.debug("processing repo " + rNameShort);
         String artifacts = callHarbor(idToken, harborHost, pName, rNameShort);
         JSONArray jArtifacts = new JSONArray(artifacts);
-        for (int a=0; a<jArtifacts.length(); a++) {
+        for (int a = 0; a < jArtifacts.length(); a++) {
             // for each artifact
             JSONObject jArtifact = jArtifacts.getJSONObject(a);
             if (!jArtifact.isNull("labels")) {
@@ -249,7 +257,7 @@ public class GetAction extends SkahaAction {
                     String digest = jArtifact.getString("digest");
                     if (!jArtifact.isNull("tags")) {
                         JSONArray tags = jArtifact.getJSONArray("tags");
-                        for (int j=0; j<tags.length(); j++) {
+                        for (int j = 0; j < tags.length(); j++) {
                             JSONObject jTag = tags.getJSONObject(j);
                             String tag = jTag.getString("name");
                             String imageID = harborHost + "/" + rName + ":" + tag;

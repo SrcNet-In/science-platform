@@ -2,11 +2,11 @@
 package org.opencadc.skaha.utils;
 
 import com.google.gson.Gson;
+import org.opencadc.skaha.image.Image;
 import redis.clients.jedis.Jedis;
 
 import java.io.Closeable;
-import java.util.Collection;
-import java.util.List;
+import java.util.*;
 
 public class RedisCache implements Closeable {
     private final Jedis jedis;
@@ -56,20 +56,7 @@ public class RedisCache implements Closeable {
         return gson.fromJson(valueInString, className);
     }
 
-
     public void close() {
         jedis.close();
     }
-
-
-    public static void main(String[] args) {
-//        try (RedisCache jedis = new RedisCache("localhost", 6379)) {
-//
-//            jedis.put("names","Abhishek Ghosh");
-//            System.out.println(jedis.get("names"));
-//        }
-        RedisCache jedis = new RedisCache("localhost", 6379);
-        jedis.push("names", List.of("Abhishek", "Anuja", "Nitin"));
-    }
-
 }

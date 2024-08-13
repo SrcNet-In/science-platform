@@ -98,6 +98,7 @@ import org.opencadc.skaha.session.Session;
 import org.opencadc.skaha.session.SessionDAO;
 import org.opencadc.skaha.utils.CommandExecutioner;
 import org.opencadc.skaha.utils.CommonUtils;
+import org.opencadc.skaha.utils.RedisCache;
 
 import javax.security.auth.Subject;
 import java.io.ByteArrayOutputStream;
@@ -119,6 +120,7 @@ import static org.opencadc.skaha.utils.CommonUtils.isNotEmpty;
 public abstract class SkahaAction extends RestAction {
 
     private static final Logger log = Logger.getLogger(SkahaAction.class);
+    protected RedisCache redis;
 
     private static final String POSIX_MAPPER_RESOURCE_ID_KEY = "skaha.posixmapper.resourceid";
 
@@ -150,6 +152,9 @@ public abstract class SkahaAction extends RestAction {
     protected String skahaHeadlessPriortyClass;
     protected int maxUserSessions;
     protected final PosixMapperConfiguration posixMapperConfiguration;
+    private String redisHost;
+    private int redisPort;
+    protected int imageRefreshInterval;
    
 
 
@@ -186,6 +191,9 @@ public abstract class SkahaAction extends RestAction {
         }
 
         final String configuredPosixMapperResourceID = System.getenv(SkahaAction.POSIX_MAPPER_RESOURCE_ID_KEY);
+        redisHost = System.getenv("skaha.redishost");
+        redisPort = Integer.parseInt(System.getenv("skaha.redisport"));
+        imageRefreshInterval = Integer.parseInt(System.getenv("skaha.imagerefreshinterval"));
 
         log.debug("skaha.hostname=" + server);
         log.debug("skaha.homedir=" + homedir);
@@ -225,6 +233,7 @@ public abstract class SkahaAction extends RestAction {
         URI skahaUsersUri = URI.create(skahaUsersGroup);
         final Subject currentSubject = AuthenticationUtil.getCurrentSubject();
         log.debug("Subject: " + currentSubject);
+        redis = new RedisCache(redisHost, redisPort);
         if (isSkahaCallBackFlow(currentSubject)) {
             initiateSkahaCallbackFlow(currentSubject, skahaUsersUri);
         } else {
