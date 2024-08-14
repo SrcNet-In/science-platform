@@ -14,6 +14,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
 import static org.mockito.Mockito.when;
 import static org.opencadc.skaha.utils.TestUtils.set;
 
@@ -45,6 +46,19 @@ public class RedisCacheTest {
     }
 
     @Test
+    public void testShouldThrowExceptionForNullKey() {
+        assertThrows(RuntimeException.class, () -> redisCache.get(null));
+    }
+
+    @Test
+    public void testShouldThrowExceptionForNullPayload() {
+        String keyName = "key-name";
+        when(jedis.get(ArgumentMatchers.eq(keyName)))
+                .thenThrow(new RuntimeException());
+        assertThrows(RuntimeException.class, () -> redisCache.get(keyName));
+    }
+
+    @Test
     public void testObjectPut() {
         String keyName = "key-name";
         Map<String, String> payload = new HashMap<>();
@@ -55,6 +69,25 @@ public class RedisCacheTest {
                 .thenReturn(OK);
 
         assertEquals(OK, redisCache.put(keyName, payload));
+    }
+
+    @Test
+    public void testObjectPutShouldThrowExceptionForNullKey() {
+        Map<String, String> payload = new HashMap<>();
+        payload.put("key", "value");
+        assertThrows(RuntimeException.class, () -> redisCache.put(null, payload));
+    }
+
+    @Test
+    public void testObjectPutShouldThrowExceptionForJedisException() {
+        String keyName = "key-name";
+        Map<String, String> payload = new HashMap<>();
+        payload.put("key", "value");
+        String payloadInString = new Gson().toJson(payload);
+
+        when(jedis.set(ArgumentMatchers.eq(keyName), ArgumentMatchers.eq(payloadInString)))
+                .thenThrow(new RuntimeException());
+        assertThrows(RuntimeException.class, () -> redisCache.put(keyName, payload));
     }
 
     @Test
