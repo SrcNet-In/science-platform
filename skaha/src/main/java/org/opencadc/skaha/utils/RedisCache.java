@@ -33,13 +33,6 @@ public class RedisCache implements Closeable {
         put(key, valueInString);
     }
 
-    public void push(String key, Collection<Object> values) {
-        String[] valuesAsArray = values.stream()
-                .map(val -> gson.toJson(val))
-                .toArray(String[]::new);
-        jedis.rpush(key, valuesAsArray);
-    }
-
     public String get(String key) {
         if (key == null) throw new RuntimeException("null key");
         try {
