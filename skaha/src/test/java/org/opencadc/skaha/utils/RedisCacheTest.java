@@ -11,6 +11,7 @@ import org.mockito.junit.MockitoJUnitRunner;
 import redis.clients.jedis.Jedis;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
@@ -25,6 +26,8 @@ public class RedisCacheTest {
     private RedisCache redisCache;
 
     Jedis jedis;
+
+    Gson gson = new Gson();
 
 
     private static final String OK = "OK";
@@ -45,17 +48,19 @@ public class RedisCacheTest {
         assertEquals(OK, redisCache.put(keyName, value));
     }
 
-    @Test
-    public void testShouldThrowExceptionForNullKey() {
-        assertThrows(RuntimeException.class, () -> redisCache.get(null));
-    }
 
     @Test
     public void testShouldThrowExceptionForNullPayload() {
         String keyName = "key-name";
+        String exceptionMessage = "Exception Occurred";
+
         when(jedis.get(ArgumentMatchers.eq(keyName)))
-                .thenThrow(new RuntimeException());
-        assertThrows(RuntimeException.class, () -> redisCache.get(keyName));
+                .thenThrow(new RuntimeException(exceptionMessage));
+        Exception exception = assertThrows(Exception.class, () -> {
+            redisCache.get(keyName);
+        });
+
+        assertEquals(exceptionMessage, exception.getMessage());
     }
 
     @Test
@@ -73,21 +78,28 @@ public class RedisCacheTest {
 
     @Test
     public void testObjectPutShouldThrowExceptionForNullKey() {
-        Map<String, String> payload = new HashMap<>();
-        payload.put("key", "value");
-        assertThrows(RuntimeException.class, () -> redisCache.put(null, payload));
+        Object payload = new HashMap<>();
+
+        Exception exception = assertThrows(Exception.class, () -> {
+            redisCache.put(null, payload);
+        });
+
+        assertEquals("null key", exception.getMessage());
     }
 
     @Test
     public void testObjectPutShouldThrowExceptionForJedisException() {
         String keyName = "key-name";
-        Map<String, String> payload = new HashMap<>();
-        payload.put("key", "value");
-        String payloadInString = new Gson().toJson(payload);
+        Object payload = new HashMap<>();
+        String exceptionMessage = "Exception Occurred";
 
-        when(jedis.set(ArgumentMatchers.eq(keyName), ArgumentMatchers.eq(payloadInString)))
-                .thenThrow(new RuntimeException());
-        assertThrows(RuntimeException.class, () -> redisCache.put(keyName, payload));
+        when(jedis.set(ArgumentMatchers.eq(keyName), ArgumentMatchers.eq(gson.toJson(payload))))
+                .thenThrow(new RuntimeException(exceptionMessage));
+
+        Exception exception = assertThrows(Exception.class, () -> {
+            redisCache.put(keyName, payload);
+        });
+        assertEquals(exceptionMessage, exception.getMessage());
     }
 
     @Test
@@ -101,6 +113,31 @@ public class RedisCacheTest {
     }
 
     @Test
+    public void testShouldThrowExceptionForNullKey() {
+        Exception exception = assertThrows(Exception.class, () -> {
+            redisCache.get(null);
+        });
+
+        assertEquals("null key", exception.getMessage());
+    }
+
+
+    @Test
+    public void testExceptionInGet() {
+        String keyName = "key-name";
+        String exceptionMessage = "Exception Occurred";
+
+        when(jedis.get(ArgumentMatchers.eq(keyName)))
+                .thenThrow(new RuntimeException(exceptionMessage));
+
+        Exception exception = assertThrows(Exception.class, () -> {
+            redisCache.get(keyName);
+        });
+
+        assertEquals(exceptionMessage, exception.getMessage());
+    }
+
+    @Test
     public void testObjectGet() {
         String keyName = "key-name";
         Map<String, String> payload = new HashMap<>();
@@ -111,6 +148,26 @@ public class RedisCacheTest {
                 .thenReturn(payloadInString);
 
         assertEquals(payload, redisCache.get(keyName, Map.class));
+    }
+
+    @Test
+    public void testExceptionInObjectGet() {
+        String keyName = "key-name";
+        Map<String, String> payload = new HashMap<>();
+        payload.put("key", "value");
+        String payloadInString = gson.toJson(payload);
+        String exceptionMessage = "Unable to cast value to java.util.List";
+
+        when(jedis.get(ArgumentMatchers.eq(keyName)))
+                .thenReturn(payloadInString);
+
+        assertEquals(payload, redisCache.get(keyName, Map.class));
+
+        Exception exception = assertThrows(Exception.class, () -> {
+            redisCache.get(keyName, List.class);
+        });
+
+        assertEquals(exceptionMessage, exception.getMessage());
     }
 
 }

@@ -191,9 +191,9 @@ public abstract class SkahaAction extends RestAction {
         }
 
         final String configuredPosixMapperResourceID = System.getenv(SkahaAction.POSIX_MAPPER_RESOURCE_ID_KEY);
-        redisHost = System.getenv("skaha.redishost");
-        redisPort = Integer.parseInt(System.getenv("skaha.redisport"));
-        imageRefreshInterval = Integer.parseInt(System.getenv("skaha.imagerefreshinterval"));
+        redisHost = System.getenv("skaha.redis-host");
+        redisPort = Integer.parseInt(System.getenv("skaha.redis-port"));
+        imageRefreshInterval = Integer.parseInt(System.getenv("skaha.image-refresh-interval"));
 
         log.debug("skaha.hostname=" + server);
         log.debug("skaha.homedir=" + homedir);

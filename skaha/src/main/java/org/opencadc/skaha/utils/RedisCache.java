@@ -2,6 +2,7 @@
 package org.opencadc.skaha.utils;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonSyntaxException;
 import redis.clients.jedis.Jedis;
 
 import java.io.Closeable;
@@ -47,10 +48,19 @@ public class RedisCache implements Closeable {
     public <T> T get(String key, Class<T> className) {
         String valueInString = get(key);
         if (valueInString == null) return null;
-        return gson.fromJson(valueInString, className);
+        try {
+            return gson.fromJson(valueInString, className);
+        } catch (JsonSyntaxException ex) {
+            ex.printStackTrace();
+            throw new ClassCastException("Unable to cast value to " + className.getCanonicalName());
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            throw ex;
+        }
     }
 
     public void close() {
         jedis.close();
     }
+
 }

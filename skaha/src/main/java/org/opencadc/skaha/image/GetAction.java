@@ -69,19 +69,16 @@ package org.opencadc.skaha.image;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-
-import java.util.*;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-
 import org.apache.log4j.Logger;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.json.JSONTokener;
 import org.opencadc.skaha.SkahaAction;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.*;
 
 /**
  * @author majorb
@@ -91,6 +88,8 @@ public class GetAction extends SkahaAction {
     private static final Logger log = Logger.getLogger(GetAction.class);
     private static final int MAX_PROJECT_NTHREADS = 20;
     private static final int MAX_REPO_NTHREADS = 40;
+    public static final String IMAGE_LAST_UPDATED_TIMESTAMP = "lastUpdated";
+    public static final String PUBLIC_IMAGES = "public";
 
     public GetAction() {
         super();
@@ -115,9 +114,9 @@ public class GetAction extends SkahaAction {
     }
 
     protected List<Image> getImages(String idToken, String typeFilter) throws Exception {
-        String lastUpdated = redis.get("lastUpdated");
+        String lastUpdated = redis.get(IMAGE_LAST_UPDATED_TIMESTAMP);
         if (isImageListUpdated(lastUpdated)) {
-            return redis.get("public", ImageList.class).get();
+            return redis.get(PUBLIC_IMAGES, ImageList.class).get();
         }
 
         List<Callable<List<Image>>> tasks = new ArrayList<Callable<List<Image>>>();
@@ -174,8 +173,8 @@ public class GetAction extends SkahaAction {
             }
         }
 
-        redis.put("lastUpdated", String.valueOf(System.currentTimeMillis()));
-        redis.put("public", new ImageList(images));
+        redis.put(IMAGE_LAST_UPDATED_TIMESTAMP, String.valueOf(System.currentTimeMillis()));
+        redis.put(PUBLIC_IMAGES, new ImageList(images));
         return images;
     }
 
