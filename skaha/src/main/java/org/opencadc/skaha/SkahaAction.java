@@ -68,13 +68,8 @@
 package org.opencadc.skaha;
 
 import ca.nrc.cadc.ac.Group;
-import ca.nrc.cadc.auth.AuthMethod;
-import ca.nrc.cadc.auth.AuthenticationUtil;
-import ca.nrc.cadc.auth.HttpPrincipal;
-import ca.nrc.cadc.auth.NotAuthenticatedException;
-import ca.nrc.cadc.auth.PosixPrincipal;
+import ca.nrc.cadc.auth.*;
 import ca.nrc.cadc.cred.client.CredUtil;
-import ca.nrc.cadc.io.ResourceIterator;
 import ca.nrc.cadc.net.HttpGet;
 import ca.nrc.cadc.net.ResourceNotFoundException;
 import ca.nrc.cadc.reg.Standards;
@@ -87,7 +82,6 @@ import ca.nrc.cadc.util.StringUtil;
 import org.apache.log4j.Logger;
 import org.json.JSONArray;
 import org.json.JSONObject;
-import org.opencadc.auth.PosixGroup;
 import org.opencadc.auth.PosixMapperClient;
 import org.opencadc.gms.GroupURI;
 import org.opencadc.gms.IvoaGroupClient;
@@ -154,7 +148,7 @@ public abstract class SkahaAction extends RestAction {
     protected final PosixMapperConfiguration posixMapperConfiguration;
     private String redisHost;
     private int redisPort;
-    protected int imageRefreshInterval;
+    protected long imageRefreshInterval;
    
 
 
@@ -191,9 +185,9 @@ public abstract class SkahaAction extends RestAction {
         }
 
         final String configuredPosixMapperResourceID = System.getenv(SkahaAction.POSIX_MAPPER_RESOURCE_ID_KEY);
-        redisHost = System.getenv("skaha.redis-host");
-        redisPort = Integer.parseInt(System.getenv("skaha.redis-port"));
-        imageRefreshInterval = Integer.parseInt(System.getenv("skaha.image-refresh-interval"));
+        redisHost = System.getenv("REDIS_HOST");
+        redisPort = Integer.parseInt(System.getenv("REDIS_PORT"));
+        imageRefreshInterval = Long.parseLong(System.getenv("IMAGE_REFRESH_INTERVAL")) * 60 * 1000;
 
         log.debug("skaha.hostname=" + server);
         log.debug("skaha.homedir=" + homedir);

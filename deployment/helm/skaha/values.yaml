@@ -23,6 +23,8 @@ deployment:
     maxUserSessions: "3"
     sessionExpiry: "345600"
     defaultQuotaGB: "10"
+    session:
+      imageRefreshInterval: 60 # image will refresh in specified minutes
 
     # Space delimited list of allowed Image Registry hosts.  These hosts should match the hosts in the User Session images.
     registryHosts: "images.canfar.net"

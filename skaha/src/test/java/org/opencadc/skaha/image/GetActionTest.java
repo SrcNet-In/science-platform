@@ -27,14 +27,14 @@ public class GetActionTest {
 
     private String redisHost = "localhost";
     private int redisPort = 6129;
-    private long imageRefreshInterval = 100000;
+    private long imageRefreshInterval = 1;
 
 
     @Before
     public void setUp() throws Exception {
-        setEnv("skaha.redis-host", redisHost);
-        setEnv("skaha.redis-port", Integer.toString(redisPort));
-        setEnv("skaha.image-refresh-interval", Long.toString(imageRefreshInterval));
+        setEnv("REDIS_HOST", redisHost);
+        setEnv("REDIS_PORT", Integer.toString(redisPort));
+        setEnv("IMAGE_REFRESH_INTERVAL", Long.toString(imageRefreshInterval));
         redis = Mockito.mock(RedisCache.class);
         getAction = new GetAction();
         set(getAction, SkahaAction.class, "redis", redis);
@@ -46,28 +46,15 @@ public class GetActionTest {
 
     @Test
     public void testGetImagesFromRedis() throws Exception {
+        long lastUpdatedTime = System.currentTimeMillis() - 1000;
         ImageList expectedImageList = new ImageList(List.of(
                 new Image("1", Set.of("notebook"), "hashcode")
         ));
 
         when(redis.get(eq("lastUpdated")))
-                .thenReturn(System.currentTimeMillis() + "");
+                .thenReturn(lastUpdatedTime + "");
         when(redis.get(eq("public"), ArgumentMatchers.any()))
                 .thenReturn(expectedImageList);
-
-        List<Image> actualImageList = getAction.getImages(null, null);
-
-        assertEquals(expectedImageList.get(), actualImageList);
-    }
-
-//    @Test
-    public void testGetOldImagesFromRedis() throws Exception {
-        long lastUpdatedTime = System.currentTimeMillis() - 2 * imageRefreshInterval;
-        ImageList expectedImageList = new ImageList(List.of(
-                new Image("1", Set.of("notebook"), "hashcode")
-        ));
-
-        when(redis.get(eq("lastUpdated"))).thenReturn(lastUpdatedTime+ "");
 
         List<Image> actualImageList = getAction.getImages(null, null);
 
