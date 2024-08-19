@@ -68,7 +68,7 @@ spec:
         - name: REDIS_PORT
           value: "6379"
         - name: IMAGE_REFRESH_INTERVAL
-          value: {{ .Values.deployment.skaha.session.imageRefreshInterval }} 
+          value: "{{ .Values.deployment.skaha.session.imageRefreshInterval }}"
         {{- with .Values.deployment.skaha.extraEnv }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
