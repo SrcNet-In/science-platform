@@ -25,9 +25,9 @@ public class GetActionTest {
 
     RedisCache redis;
 
-    private String redisHost = "localhost";
-    private int redisPort = 6129;
-    private long imageRefreshInterval = 1;
+    private static final String redisHost = "localhost";
+    private static final int redisPort = 6129;
+    private static final long imageRefreshInterval = 1;
 
 
     @Before

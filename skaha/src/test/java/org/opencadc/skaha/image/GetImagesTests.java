@@ -79,6 +79,12 @@ import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.junit.Assert;
 import org.junit.Test;
+import org.mockito.Mockito;
+import org.opencadc.skaha.SkahaAction;
+import org.opencadc.skaha.utils.RedisCache;
+
+import static org.opencadc.skaha.utils.TestUtils.set;
+import static org.opencadc.skaha.utils.TestUtils.setEnv;
 
 
 /**
@@ -88,8 +94,15 @@ import org.junit.Test;
 public class GetImagesTests {
     
     private static final Logger log = Logger.getLogger(GetImagesTests.class);
-    
+
+    private static final String redisHost = "localhost";
+    private static final int redisPort = 6129;
+    private static final long imageRefreshInterval = 1;
+
     static {
+        setEnv("REDIS_HOST", redisHost);
+        setEnv("REDIS_PORT", Integer.toString(redisPort));
+        setEnv("IMAGE_REFRESH_INTERVAL", Long.toString(imageRefreshInterval));
         Log4jInit.setLevel("org.opencadc.skaha", Level.DEBUG);
     }
     
@@ -167,6 +180,7 @@ public class GetImagesTests {
     public void testGetImages() {
         try {
             GetAction get = new TestGetAction();
+            set(get, SkahaAction.class, "redis", Mockito.mock(RedisCache.class));
             get.harborHosts.add("test");
             List<Image> images = get.getImages(null, null);
             Gson gson = new GsonBuilder().setPrettyPrinting().create();
