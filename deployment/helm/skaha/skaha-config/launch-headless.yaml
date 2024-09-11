@@ -35,11 +35,7 @@ spec:
       initContainers:
       {{ template "skaha.job.initContainers" . }}
       securityContext:
-        runAsUser: ${skaha.posixid}
-        runAsGroup: ${skaha.posixid}
-        fsGroup: ${skaha.posixid}
-        supplementalGroups: [${skaha.supgroups}]
-        runAsNonRoot: true
+        {{ template "skaha.job.securityContext" . }}
       ${headless.priority}
       containers:
       - name: "${skaha.jobname}"
@@ -76,6 +72,20 @@ spec:
             ${software.limits.gpus}
             ephemeral-storage: "200Gi"
         volumeMounts:
+        - mountPath: "/etc/passwd"
+          name: etc-passwd
+          subPath: passwd
+        - mountPath: "/etc/group"
+          name: etc-group
+          subPath: group
         {{ template "skaha.session.commonVolumeMounts" . }}
       volumes:
+      - name: etc-group
+        emptyDir: { }
+      - name: etc-passwd
+        emptyDir: { }
+      - name: init-users-groups
+        configMap:
+          name: init-users-groups-config
+          defaultMode: 0777
       {{ template "skaha.session.commonVolumes" . }}

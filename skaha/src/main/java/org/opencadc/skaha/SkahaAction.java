@@ -153,9 +153,7 @@ public abstract class SkahaAction extends RestAction {
 
 
     protected boolean skahaCallbackFlow = false;
-    protected String callbackSessionId = null;
     protected String callbackSupplementalGroups = null;
-    protected String xAuthTokenSkaha = null;
 
 
     public SkahaAction() {
@@ -285,10 +283,10 @@ public abstract class SkahaAction extends RestAction {
 
     private void initiateSkahaCallbackFlow(Subject currentSubject, URI skahaUsersUri) {
         skahaCallbackFlow = true;
-        xAuthTokenSkaha = syncInput.getHeader(X_AUTH_TOKEN_SKAHA);
+        final String xAuthTokenSkaha = syncInput.getHeader(X_AUTH_TOKEN_SKAHA);
         log.debug("x-auth-token-skaha header is " + xAuthTokenSkaha);
         try {
-            callbackSessionId = SkahaAction.getTokenTool().validateToken(xAuthTokenSkaha, skahaUsersUri, WriteGrant.class);
+            final String callbackSessionId = SkahaAction.getTokenTool().validateToken(xAuthTokenSkaha, skahaUsersUri, WriteGrant.class);
 
             final Session session = SessionDAO.getSession(null, callbackSessionId, skahaTld);
             this.posixPrincipal = session.getPosixPrincipal();

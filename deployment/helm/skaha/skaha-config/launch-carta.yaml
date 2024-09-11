@@ -31,11 +31,7 @@ spec:
       imagePullSecrets:
       - name: ${software.imagesecret}
       securityContext:
-        runAsUser: ${skaha.posixid}
-        runAsGroup: ${skaha.posixid}
-        fsGroup: ${skaha.posixid}
-        supplementalGroups: [${skaha.supgroups}]
-        runAsNonRoot: true
+        {{ template "skaha.job.securityContext" . }}
       priorityClassName: uber-user-preempt-medium
       hostname: "${software.hostname}"
       initContainers:
@@ -83,8 +79,26 @@ spec:
           protocol: TCP
           name: frontend-port
         volumeMounts:
+        - mountPath: "/skaha-system"
+          name: start-carta
+        - mountPath: "/etc/passwd"
+          name: etc-passwd
+          subPath: passwd
+        - mountPath: "/etc/group"
+          name: etc-group
+          subPath: group
         {{ template "skaha.session.commonVolumeMounts" . }}
-        {{ template "skaha.session.cartaVolumeMounts" . }}
       volumes:
+      - name: etc-group
+        emptyDir: { }
+      - name: etc-passwd
+        emptyDir: { }
+      - name: start-carta
+        configMap:
+          name: launch-scripts
+          defaultMode: 0777
+      - name: init-users-groups
+        configMap:
+          name: init-users-groups-config
+          defaultMode: 0777
       {{ template "skaha.session.commonVolumes" . }}
-      {{ template "skaha.session.cartaVolumes" . }}
