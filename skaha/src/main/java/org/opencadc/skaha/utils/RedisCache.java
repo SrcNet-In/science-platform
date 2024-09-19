@@ -3,12 +3,18 @@ package org.opencadc.skaha.utils;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonSyntaxException;
+import org.opencadc.skaha.image.Image;
+import org.opencadc.skaha.image.ImageList;
 import redis.clients.jedis.Jedis;
 
 import java.io.Closeable;
+import java.util.List;
+import java.util.Objects;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 public class RedisCache implements Closeable {
-    private final Jedis jedis;
+    public final Jedis jedis;
     private final Gson gson = new Gson();
 
     public RedisCache() {
@@ -57,6 +63,23 @@ public class RedisCache implements Closeable {
             ex.printStackTrace();
             throw ex;
         }
+    }
+
+    public static void main(String[] args) {
+        RedisCache cache = new RedisCache("localhost", 6379);
+        List<String> images = cache.jedis.lrange("public", 0, -1);
+        Gson gson = new Gson();
+        String type = "notebook";
+
+        List<Image> f = images
+                .stream()
+                .map(image -> gson.fromJson(image, Image.class))
+                .filter(Objects::nonNull)
+                .filter(image -> type == null || (image.getTypes().contains(type)))
+                .toList();
+
+
+        cache.close();
     }
 
     public void close() {
