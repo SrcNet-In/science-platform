@@ -102,6 +102,7 @@ import org.opencadc.skaha.SkahaAction;
 import org.opencadc.skaha.context.ResourceContexts;
 import org.opencadc.skaha.image.Image;
 import org.opencadc.skaha.utils.PosixCache;
+import org.opencadc.skaha.utils.QueueUtil;
 
 /**
  * @author majorb
@@ -141,6 +142,7 @@ public class PostAction extends SessionAction {
     private static final String DESKTOP_SESSION_APP_TOKEN = "software.desktop.app.token";
     private static final String POSIX_MAPPER_URI = "POSIX_MAPPER_URI";
     private static final String SKAHA_TLD = "SKAHA_TLD";
+    private static final String SKAHA_LOCAL_QUEUE = "SKAHA_LOCAL_QUEUE";
 
     public PostAction() {
         super();
@@ -599,7 +601,8 @@ public class PostAction extends SessionAction {
                         this.posixMapperConfiguration.getBaseURL() == null
                                 ? this.posixMapperConfiguration.getResourceID().toString()
                                 : this.posixMapperConfiguration.getBaseURL().toExternalForm())
-                .withParameter(PostAction.SKAHA_TLD, this.skahaTld);
+                .withParameter(PostAction.SKAHA_TLD, this.skahaTld)
+                .withParameter(PostAction.SKAHA_LOCAL_QUEUE, this.getLocalQueue(type));
 
         if (StringUtil.hasText(supplementalGroups)) {
             sessionJobBuilder = sessionJobBuilder.withParameter(PostAction.SKAHA_SUPPLEMENTALGROUPS, supplementalGroups);
@@ -749,7 +752,8 @@ public class PostAction extends SessionAction {
                         this.posixMapperConfiguration.getBaseURL() == null
                                 ? this.posixMapperConfiguration.getResourceID().toString()
                                 : this.posixMapperConfiguration.getBaseURL().toExternalForm())
-                .withParameter(PostAction.SKAHA_TLD, this.skahaTld);
+                .withParameter(PostAction.SKAHA_TLD, this.skahaTld)
+                .withParameter(PostAction.SKAHA_LOCAL_QUEUE, this.getLocalQueue(SessionAction.TYPE_DESKTOP_APP));
         final String supplementalGroups = getSupplementalGroupsList();
         if (StringUtil.hasText(supplementalGroups)) {
             sessionJobBuilder = sessionJobBuilder.withParameter(PostAction.SKAHA_SUPPLEMENTALGROUPS, supplementalGroups);
@@ -859,5 +863,21 @@ public class PostAction extends SessionAction {
         } else {
             return "";
         }
+    }
+
+    private String getLocalQueue(String type) throws IOException, InterruptedException {
+        List<String> groupNames = getGroupNames();
+        return QueueUtil.getLocalQueue(groupNames, type);
+    }
+
+    private List<String> getGroupNames() {
+        // finding the local queue based on the user's group
+        Set<List<Group>> groupCredentials = getCachedGroupsFromSubject();
+        List<Group> groups = groupCredentials.stream()
+                .flatMap(List::stream)
+                .collect(Collectors.toList());
+        return groups.stream()
+                .map(group -> group.getID().getName())
+                .collect(Collectors.toList());
     }
 }
