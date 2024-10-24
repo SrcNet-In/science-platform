@@ -269,7 +269,7 @@ public abstract class SessionAction extends SkahaAction {
 
     public String getPodID(String forUserID, String sessionID) throws Exception {
         String[] getPodCmd =  KubectlCommandBuilder.command("get")
-                .argument("pod")
+                .pod()
                 .namespace(K8SUtil.getWorkloadNamespace())
                 .label("canfar-net-sessionID=" + sessionID + ",canfar-net-userid=" + forUserID)
                 .noHeaders()
@@ -397,7 +397,7 @@ public abstract class SessionAction extends SkahaAction {
     private String[] getJobExpiryTimeCMD(String k8sNamespace, String forUserID) {
         return KubectlCommandBuilder.command("get")
                 .namespace(k8sNamespace)
-                .argument("job")
+                .job()
                 .label( "canfar-net-userid=" + forUserID)
                 .noHeaders()
                 .outputFormat("custom-columns=NAME:.metadata.name,EXPIRY:.spec.activeDeadlineSeconds")
@@ -422,7 +422,7 @@ public abstract class SessionAction extends SkahaAction {
 
         return KubectlCommandBuilder.command("get")
                 .namespace(k8sNamespace)
-                .argument("job")
+                .job()
                 .label(labels)
                 .noHeaders()
                 .outputFormat("custom-columns=NAME:.metadata.name")
