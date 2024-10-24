@@ -5,6 +5,7 @@ import ca.nrc.cadc.util.StringUtil;
 import org.apache.log4j.Logger;
 import org.opencadc.skaha.K8SUtil;
 import org.opencadc.skaha.SkahaAction;
+import org.opencadc.skaha.utils.KubectlCommandBuilder;
 
 import java.io.IOException;
 import java.time.Instant;
@@ -25,24 +26,18 @@ public class SessionDAO {
 
     // Ordered dictionary of columns requested from Kubernetes
 
-    static List<String> getSessionsCMD(final String k8sNamespace, final String forUserID,
+    static String[] getSessionsCMD(final String k8sNamespace, final String forUserID,
                                        final String sessionID) {
-        final List<String> sessionsCMD = new ArrayList<>();
-        sessionsCMD.add("kubectl");
-        sessionsCMD.add("get");
-        sessionsCMD.add("--namespace");
-        sessionsCMD.add(k8sNamespace);
-        sessionsCMD.add("pod");
+        KubectlCommandBuilder.KubectlCommand sessionsCmd = KubectlCommandBuilder.command("get")
+                .namespace(k8sNamespace)
+                .argument("pod")
+                .noHeaders();
 
         final String[] labelCriteria = SessionDAO.getSessionsCommandLabelCriteria(forUserID, sessionID);
 
         if (labelCriteria.length > 0) {
-            sessionsCMD.add("-l");
-            sessionsCMD.add(String.join(",", labelCriteria));
+            sessionsCmd.label(String.join(",", labelCriteria));
         }
-
-        sessionsCMD.add("--no-headers=true");
-        sessionsCMD.add("-o");
 
         final String customColumns = "custom-columns="
                                      + Arrays.stream(CustomColumns.values())
@@ -51,8 +46,7 @@ public class SessionDAO {
                                                                                 customColumn.columnDefinition))
                                              .collect(Collectors.joining(","));
 
-        sessionsCMD.add(customColumns);
-        return sessionsCMD;
+        return sessionsCmd.outputFormat(customColumns).build();
     }
 
     private static String[] getSessionsCommandLabelCriteria(final String userID, final String sessionID) {
@@ -87,8 +81,8 @@ public class SessionDAO {
     protected static List<Session> getSessions(String forUserID, String sessionID, final String topLevelDirectory)
             throws Exception {
         String k8sNamespace = K8SUtil.getWorkloadNamespace();
-        List<String> sessionsCMD = SessionDAO.getSessionsCMD(k8sNamespace, forUserID, sessionID);
-        String sessionList = execute(sessionsCMD.toArray(new String[0]));
+        String[] sessionsCMD = SessionDAO.getSessionsCMD(k8sNamespace, forUserID, sessionID);
+        String sessionList = execute(sessionsCMD);
         LOGGER.debug("Session list: " + sessionList);
 
         List<Session> sessions = new ArrayList<>();
@@ -143,8 +137,8 @@ public class SessionDAO {
                         if (StringUtil.hasText(session.getRequestedGPUCores()) &&
                             !NONE.equals(session.getRequestedGPUCores()) &&
                             Double.parseDouble(session.getRequestedGPUCores()) > 0.0) {
-                            List<String> sessionGPUUsageCMD = getSessionGPUUsageCMD(k8sNamespace, fullName);
-                            String sessionGPUUsage = execute(sessionGPUUsageCMD.toArray(new String[0]));
+                            String[] sessionGPUUsageCMD = getSessionGPUUsageCMD(k8sNamespace, fullName);
+                            String sessionGPUUsage = execute(sessionGPUUsageCMD);
                             List<String> gpuUsage = getGPUUsage(sessionGPUUsage);
                             session.setGPURAMInUse(gpuUsage.get(0));
                             session.setGPUUtilization(gpuUsage.get(1));
@@ -264,9 +258,9 @@ public class SessionDAO {
 
     private static Map<String, String[]> getResourceUsages(String k8sNamespace, String forUserID) throws Exception {
         Map<String, String[]> resourceUsages = new HashMap<>();
-        List<String> sessionResourceUsageCMD = getSessionResourceUsageCMD(k8sNamespace, forUserID);
+        String[] sessionResourceUsageCMD = getSessionResourceUsageCMD(k8sNamespace, forUserID);
         try {
-            String sessionResourceUsageMap = execute(sessionResourceUsageCMD.toArray(new String[0]));
+            String sessionResourceUsageMap = execute(sessionResourceUsageCMD);
             LOGGER.debug("Resource used: " + sessionResourceUsageMap);
             if (StringUtil.hasLength(sessionResourceUsageMap)) {
                 String[] lines = sessionResourceUsageMap.split("\n");
@@ -285,57 +279,42 @@ public class SessionDAO {
         return resourceUsages;
     }
 
-    private static List<String> getSessionResourceUsageCMD(String k8sNamespace, String forUserID) {
-        final List<String> getSessionJobCMD = new ArrayList<>();
-        getSessionJobCMD.add("kubectl");
-        getSessionJobCMD.add("--namespace");
-        getSessionJobCMD.add(k8sNamespace);
-        getSessionJobCMD.add("top");
-        getSessionJobCMD.add("pod");
-        getSessionJobCMD.add("-l");
-        getSessionJobCMD.add("canfar-net-userid=" + forUserID);
-        getSessionJobCMD.add("--no-headers=true");
-        getSessionJobCMD.add("--use-protocol-buffers=true");
-        return getSessionJobCMD;
+    private static String[] getSessionResourceUsageCMD(String k8sNamespace, String forUserID) {
+        return KubectlCommandBuilder.command("get")
+                .namespace(k8sNamespace)
+                .argument("top")
+                .argument("pod")
+                .noHeaders()
+                .label( "canfar-net-userid=" + forUserID)
+                .argument("--use-protocol-buffers=true")
+                .outputFormat("custom-columns=FULL_NAME:.metadata.name,REQUESTED_CPU:.spec.containers[0].resources.requests.cpu,REQUESTED_RAM:.spec.containers[0].resources.requests.memory")
+                .build();
     }
 
-    private static List<String> getSessionGPUUsageCMD(String k8sNamespace, String podName) {
-        final List<String> getSessionGPUCMD = new ArrayList<>();
-        getSessionGPUCMD.add("kubectl");
-        getSessionGPUCMD.add("--namespace");
-        getSessionGPUCMD.add(k8sNamespace);
-        getSessionGPUCMD.add("exec");
-        getSessionGPUCMD.add("-it");
-        getSessionGPUCMD.add(podName);
-        getSessionGPUCMD.add("--");
-        getSessionGPUCMD.add("nvidia-smi");
-        return getSessionGPUCMD;
+    private static String[] getSessionGPUUsageCMD(String k8sNamespace, String podName) {
+        return KubectlCommandBuilder.command("exec")
+                .namespace(k8sNamespace)
+                .argument("-it")
+                .argument(podName)
+                .argument("--")
+                .argument("nvidia-smi")
+                .build();
     }
 
-    private static List<String> getJobExpiryTimeCMD(String k8sNamespace, String forUserID) {
-        final List<String> getSessionJobCMD = new ArrayList<>();
-        getSessionJobCMD.add("kubectl");
-        getSessionJobCMD.add("get");
-        getSessionJobCMD.add("--namespace");
-        getSessionJobCMD.add(k8sNamespace);
-        getSessionJobCMD.add("job");
-        getSessionJobCMD.add("-l");
-        getSessionJobCMD.add("canfar-net-userid=" + forUserID);
-        getSessionJobCMD.add("--no-headers=true");
-        getSessionJobCMD.add("-o");
-
-        String customColumns = "custom-columns="
-                               + "UID:.metadata.uid,"
-                               + "EXPIRY:.spec.activeDeadlineSeconds";
-
-        getSessionJobCMD.add(customColumns);
-        return getSessionJobCMD;
+    private static String[] getJobExpiryTimeCMD(String k8sNamespace, String forUserID) {
+        return KubectlCommandBuilder.command("get")
+                .namespace(k8sNamespace)
+                .argument("job")
+                .label( "canfar-net-userid=" + forUserID)
+                .noHeaders()
+                .outputFormat("custom-columns=UID:.metadata.uid,EXPIRY:.spec.activeDeadlineSeconds")
+                .build();
     }
 
     private static Map<String, String> getJobExpiryTimes(String k8sNamespace, String forUserID) throws Exception {
         final Map<String, String> jobExpiryTimes = new HashMap<>();
-        List<String> jobExpiryTimeCMD = getJobExpiryTimeCMD(k8sNamespace, forUserID);
-        String jobExpiryTimeMap = execute(jobExpiryTimeCMD.toArray(new String[0]));
+        String[] jobExpiryTimeCMD = getJobExpiryTimeCMD(k8sNamespace, forUserID);
+        String jobExpiryTimeMap = execute(jobExpiryTimeCMD);
         LOGGER.debug("Expiry times: " + jobExpiryTimeMap);
         if (StringUtil.hasLength(jobExpiryTimeMap)) {
             String[] lines = jobExpiryTimeMap.split("\n");

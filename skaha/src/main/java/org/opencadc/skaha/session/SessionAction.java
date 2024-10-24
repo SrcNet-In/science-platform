@@ -271,7 +271,7 @@ public abstract class SessionAction extends SkahaAction {
         String[] getPodCmd =  KubectlCommandBuilder.command("get")
                 .argument("pod")
                 .namespace(K8SUtil.getWorkloadNamespace())
-                .option("-l","canfar-net-sessionID=" + sessionID + ",canfar-net-userid=" + forUserID)
+                .label("canfar-net-sessionID=" + sessionID + ",canfar-net-userid=" + forUserID)
                 .noHeaders()
                 .outputFormat("custom-columns=NAME:.metadata.name")
                 .build();
@@ -309,7 +309,7 @@ public abstract class SessionAction extends SkahaAction {
     public void streamPodLogs(String forUserID, String sessionID, OutputStream out) throws Exception {
         String[] getLogsCmd = KubectlCommandBuilder.command("logs")
                 .namespace(K8SUtil.getWorkloadNamespace())
-                .option("-l", "canfar-net-sessionID=" + sessionID + ",canfar-net-userid=" + forUserID)
+                .label("canfar-net-sessionID=" + sessionID + ",canfar-net-userid=" + forUserID)
                 .option("--tail", "-1")
                 .build();
 
@@ -398,7 +398,7 @@ public abstract class SessionAction extends SkahaAction {
         return KubectlCommandBuilder.command("get")
                 .namespace(k8sNamespace)
                 .argument("job")
-                .option("-l", "canfar-net-userid=" + forUserID)
+                .label( "canfar-net-userid=" + forUserID)
                 .noHeaders()
                 .outputFormat("custom-columns=NAME:.metadata.name,EXPIRY:.spec.activeDeadlineSeconds")
                 .build();
@@ -423,7 +423,7 @@ public abstract class SessionAction extends SkahaAction {
         return KubectlCommandBuilder.command("get")
                 .namespace(k8sNamespace)
                 .argument("job")
-                .option("-l", labels)
+                .label(labels)
                 .noHeaders()
                 .outputFormat("custom-columns=NAME:.metadata.name")
                 .build();

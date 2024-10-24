@@ -77,9 +77,9 @@ import org.junit.Test;
 public class SessionDAOTest {
     @Test
     public void testCommand() {
-        final List<String> commandValues =
+        final String[] commandValues =
                 SessionDAO.getSessionsCMD("ns", null, "session-id-1");
-        final String command = String.join(" ", commandValues.toArray(new String[0]));
+        final String command = String.join(" ", commandValues);
         Assert.assertEquals("Wrong command.",
                             "kubectl get --namespace ns pod -l canfar-net-sessionID=session-id-1 "
                             + "--no-headers=true -o custom-columns=SESSION_ID:.metadata.labels.canfar-net-sessionID,"
