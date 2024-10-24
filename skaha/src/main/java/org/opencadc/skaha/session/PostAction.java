@@ -67,32 +67,11 @@
 
 package org.opencadc.skaha.session;
 
-import static org.opencadc.skaha.utils.CommandExecutioner.execute;
-
 import ca.nrc.cadc.ac.Group;
 import ca.nrc.cadc.auth.AuthenticationUtil;
 import ca.nrc.cadc.net.ResourceNotFoundException;
 import ca.nrc.cadc.util.StringUtil;
 import ca.nrc.cadc.uws.server.RandomStringGenerator;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.net.URI;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.security.AccessControlException;
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
-import javax.security.auth.Subject;
 import org.apache.log4j.Logger;
 import org.opencadc.auth.PosixGroup;
 import org.opencadc.gms.GroupURI;
@@ -104,6 +83,23 @@ import org.opencadc.skaha.image.Image;
 import org.opencadc.skaha.utils.KubectlCommand;
 import org.opencadc.skaha.utils.PosixCache;
 import org.opencadc.skaha.utils.QueueUtil;
+
+import javax.security.auth.Subject;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.net.URI;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.security.AccessControlException;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.*;
+import java.util.stream.Collectors;
+
+import static org.opencadc.skaha.utils.CommandExecutioner.execute;
 
 /**
  * @author majorb
@@ -864,6 +860,9 @@ public class PostAction extends SessionAction {
     }
 
     private List<String> getGroupNames() {
+        if (skahaCallbackFlow) {
+            return redis.setFetch(getUserGroupsKey());
+        }
         // finding the local queue based on the user's group
         Set<List<Group>> groupCredentials = getCachedGroupsFromSubject();
         List<Group> groups = groupCredentials.stream()
